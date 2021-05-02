@@ -32,10 +32,6 @@ class Automator:
         # enable course edit
         self.enable_edit()
 
-        # test create section
-        self.create_section("pippo baudo sei bello")
-        self.create_section()  # automatic name
-
     def login(self):
         LoginPage(self.driver).complete()
 
