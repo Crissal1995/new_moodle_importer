@@ -38,6 +38,6 @@ class Automator:
         ToggleEditPage(self.driver).complete()
         logger.info("Edit course enabled")
 
-    def create_section(self, name: str = None) -> str:
+    def create_section(self, name: str = None) -> Section:
         """Create section and returns its name"""
-        return Section(name, self.driver).create().name
+        return Section(name, self.driver).create()

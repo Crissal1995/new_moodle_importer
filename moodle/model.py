@@ -25,7 +25,7 @@ class Section:
 
         logger.debug(f"Created Section with name {name} and counter {self.counter}")
 
-    def create(self):
+    def create(self) -> "Section":
         time.sleep(0.5)
 
         selector = "a[class=add-sections]"
