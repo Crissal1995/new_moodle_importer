@@ -18,10 +18,6 @@ class Automator:
         driver.implicitly_wait(wait_s)
         self.driver = driver
 
-        # create counter for created sections
-        self.section_counter = 0
-        self.unnamed_section_counter = 0
-
         # execute login on moodle platform
         self.login()
 
@@ -39,5 +35,7 @@ class Automator:
         logger.info("Edit course enabled")
 
     def create_section(self, name: str = None) -> Section:
-        """Create section and returns its name"""
-        return Section(name, self.driver).create()
+        """Create a section with specific name and returns it"""
+        section = Section(name, self.driver)
+        section.create()
+        return section
