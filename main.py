@@ -1,4 +1,5 @@
 import logging
+import pathlib
 
 import moodle
 from moodle.utility import test_environment
@@ -27,11 +28,26 @@ for handler in handlers:
 
 
 def main(**kwargs):
+    # set root of data files
+    root = pathlib.Path(kwargs.get("root", "data"))
+
     # test if env is correctly set
     test_environment(**kwargs)
 
+    # take directories (uf_x m_x) from root
+    directories = [elem for elem in root.iterdir() if elem.is_dir()]
+    if not directories:
+        logger.warning(f"No directory found inside {root}")
+        return
+
+    logger.info(f"Found {len(directories)} dirs inside {root}")
+
     # create an automator object
-    _ = moodle.Automator()
+    automator = moodle.Automator()
+
+    for directory in directories:
+        logger.info(f"Working on {directory}")
+        automator.create_section(directory.name)
 
 
 if __name__ == "__main__":
