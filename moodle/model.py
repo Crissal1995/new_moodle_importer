@@ -1,8 +1,8 @@
 import logging
 import time
 
-from selenium.webdriver import Remote as WebDriver
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.remote.webdriver import WebDriver, WebElement
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ class Section:
     counter = 0
 
     def __repr__(self):
-        return f"Section(name={self.name}, counter={self.counter})"
+        return f"Section(name={self.name}, dom_id={self.dom_id})"
 
     def __init__(self, name: str, driver: WebDriver):
         Section.counter += 1
@@ -23,7 +23,32 @@ class Section:
         self.name = name
         self.driver = driver
 
-        logger.debug(f"Created Section with name {name} and counter {self.counter}")
+        self.dom_id = None
+
+        logger.debug(f"Created in-memory Section with name {name}")
+
+    def _set_name(self, element: WebElement = None):
+        if element is None:
+            if self.dom_id:
+                element = self.driver.find_element_by_id(self.dom_id)
+            else:
+                msg = "Cannot set name without element nor its DOM id!"
+                logger.error(msg)
+                raise ValueError(msg)
+
+        span_sel = "div.content > h3 > span > span > a.quickeditlink > span"
+
+        # enable editing
+        element.find_element_by_css_selector(span_sel).click()
+
+        # wait a little bit
+        time.sleep(1)
+
+        # then send name and save it
+        field: WebElement = self.driver.switch_to.active_element
+        field.send_keys(self.name)
+        time.sleep(0.5)
+        field.send_keys(Keys.ENTER)
 
     def create(self) -> "Section":
         time.sleep(0.5)
@@ -40,30 +65,13 @@ class Section:
         # the section created is the last one, so we'll take it
         li = self.driver.find_elements_by_css_selector(Section.selector)[-1]
 
-        # click the edit button, and then edit section
-        # TODO fixed italian
-        li.find_element_by_link_text("Modifica").click()
-        time.sleep(1)
-        li.find_element_by_link_text("Modifica argomento").click()
+        # get unique id for course
+        self.dom_id = li.get_attribute("id")
 
-        # another page will open...
-        time.sleep(1)
-
-        input_name = self.driver.find_element_by_id("id_name_value")
-        disabled = input_name.get_property("disabled")
-
-        logger.info(f"input name, disabled value: {disabled}")
-
-        if disabled:
-            self.driver.find_element_by_id("id_name_customize").click()
-            logger.info("Checkbox was disabled, it was enabled")
-
-        time.sleep(1)
-        input_name.send_keys(self.name)
-        time.sleep(1)
-        input_name.send_keys(Keys.ENTER)
+        # rename freshly created
+        self._set_name(element=li)
 
         logger.info(f"Section renamed to '{self.name}'")
-        logger.debug(f"Created section number {self.counter}")
+        logger.debug(f"Created section on Moodle course with dom id: {self.dom_id}")
 
         return self
