@@ -1,6 +1,6 @@
 import logging
 
-from moodle.model import Section
+from moodle.model import Module, Section
 from moodle.pages import LoginPage, ToggleEditPage
 from moodle.utility import config, get_driver
 
@@ -35,7 +35,13 @@ class Automator:
         logger.info("Edit course enabled")
 
     def create_section(self, name: str) -> Section:
-        """Create a Section with specified name and returns it"""
-        section = Section(name, self.driver)
+        """Create a Section with specified name and return it"""
+        section = Section(self.driver, name)
         section.create()
         return section
+
+    def create_module(self, name: str, section: Section) -> Module:
+        """Create a Module inside a Section and return it"""
+        module = Module(self.driver, name, section)
+        module.create()
+        return module
