@@ -9,17 +9,11 @@ logger = logging.getLogger(__name__)
 
 class Section:
     selector = "li[class^=section]"
-    counter = 0
 
     def __repr__(self):
         return f"Section(name={self.name}, dom_id={self.dom_id})"
 
     def __init__(self, name: str, driver: WebDriver):
-        Section.counter += 1
-        self.counter = Section.counter
-
-        if not name:
-            name = f"automator - section number {self.counter}"
         self.name = name
         self.driver = driver
 
