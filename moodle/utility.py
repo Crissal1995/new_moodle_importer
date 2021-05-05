@@ -1,6 +1,9 @@
 import configparser
 import logging
+import os
+import pathlib
 import sys
+from typing import Union
 
 from selenium.webdriver import Chrome, Remote
 from selenium.webdriver.chrome.options import Options
@@ -8,6 +11,18 @@ from selenium.webdriver.chrome.remote_connection import ChromeRemoteConnection
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 logger = logging.getLogger(__name__)
+
+
+def get_directories(root: Union[str, os.PathLike]):
+    root = pathlib.Path(root)
+    directories = [elem for elem in root.iterdir() if elem.is_dir()]
+
+    if not directories:
+        logger.warning(f"No directory found inside {root}")
+        return []
+
+    logger.info(f"Found {len(directories)} dirs inside {root}")
+    return directories
 
 
 def get_options(**kwargs):

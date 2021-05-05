@@ -2,7 +2,7 @@ import logging
 import pathlib
 
 import moodle
-from moodle.utility import test_environment
+from moodle.utility import get_directories, test_environment
 
 FORMAT = "%(asctime)s :: %(levelname)s :: [%(module)s.%(funcName)s.%(lineno)d] :: %(message)s"
 formatter = logging.Formatter(FORMAT)
@@ -34,20 +34,18 @@ def main(**kwargs):
     # test if env is correctly set
     test_environment(**kwargs)
 
-    # take directories (uf_x m_x) from root
-    directories = [elem for elem in root.iterdir() if elem.is_dir()]
-    if not directories:
-        logger.warning(f"No directory found inside {root}")
-        return
-
-    logger.info(f"Found {len(directories)} dirs inside {root}")
+    # get root modules (ufx)
+    uf_directories = get_directories(root=root)
 
     # create an automator object
     automator = moodle.Automator()
 
-    for directory in directories:
-        logger.info(f"Working on {directory}")
-        automator.create_section(directory.name)
+    for uf_dir in uf_directories:
+        logger.info(f"UF directory: {uf_dir}")
+        section = automator.create_section(uf_dir.name)
+        for mod_dir in get_directories(uf_dir):
+            logger.info(f"MOD directory: {mod_dir}")
+            _ = automator.create_module(mod_dir.name, section=section)
 
 
 if __name__ == "__main__":
