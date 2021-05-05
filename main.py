@@ -45,7 +45,8 @@ def main(**kwargs):
         section = automator.create_section(uf_dir.name)
         for mod_dir in get_directories(uf_dir):
             logger.info(f"MOD directory: {mod_dir}")
-            _ = automator.create_module(mod_dir.name, section=section)
+            module = automator.create_module(mod_dir.name, section=section)
+            module.populate(mod_dir)
 
 
 if __name__ == "__main__":
