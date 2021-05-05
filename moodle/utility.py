@@ -68,9 +68,10 @@ def get_config(cfg_fp="moodle.cfg"):
     username = parser.get("moodle:credentials", "username")
     password = parser.get("moodle:credentials", "password")
 
-    # site section
+    # urls section
     login = parser.get("moodle:urls", "login")
     course = parser.get("moodle:urls", "course")
+    module = parser.get("moodle:urls", "module")
 
     if any(not field for field in (username, password)):
         msg = "Username or password cannot be empty!"
@@ -84,7 +85,7 @@ def get_config(cfg_fp="moodle.cfg"):
 
     return {
         "credentials": dict(username=username, password=password),
-        "site": dict(login=login, course=course),
+        "site": dict(login=login, course=course, module=module),
         "selenium": dict(env=env, path=path, url=url, headless=headless),
     }
 
