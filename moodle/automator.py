@@ -36,12 +36,18 @@ class Automator:
 
     def create_section(self, name: str) -> Section:
         """Create a Section with specified name and return it"""
+        # ensure we're on course page
+        self.go_to_course()
+
         section = Section(self.driver, name)
         section.create()
         return section
 
     def create_module(self, name: str, section: Section) -> Module:
         """Create a Module inside a Section and return it"""
+        # ensure we're on course page
+        self.go_to_course()
+
         module = Module(self.driver, name, section)
         module.create()
         return module

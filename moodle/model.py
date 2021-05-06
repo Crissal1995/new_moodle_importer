@@ -39,6 +39,10 @@ class Element(abc.ABC):
 
         return element
 
+    @staticmethod
+    def clean_input(input_element: WebElement, count: int = 10):
+        input_element.send_keys(Keys.BACKSPACE * count)
+
     def set_name(self, element: WebElement = None):
         span_sel = "a.quickeditlink"
 
@@ -191,40 +195,58 @@ class Module(Element):
         self.dom_id = module_element.get_attribute("id")
 
     def upload(self, file: Union[str, os.PathLike]):
+        # convert path to pathlib object
+        file = pathlib.Path(file)
+
         # click upload image button
         self.driver.find_element_by_css_selector(".atto_image_button").click()
-        time.sleep(2)
+        time.sleep(1)
 
         # browse to desktop
         self.driver.find_element_by_css_selector(".openimagebrowser").click()
-        time.sleep(2)
+        time.sleep(1)
 
         # select file upload from left menu
         self.driver.find_element_by_css_selector(
             ".fp-repo-area > div:nth-child(4)"
         ).click()
-        time.sleep(2)
+        time.sleep(1)
 
         # find input and upload str-file (path)
-        file = pathlib.Path(file)
         self.driver.find_element_by_name("repo_upload_file").send_keys(
             str(file.resolve())
         )
-        time.sleep(2)
+        time.sleep(1)
 
         # upload button
         self.driver.find_element_by_css_selector(".fp-upload-btn").click()
-        time.sleep(2)
+        time.sleep(3)
 
         # descrizione non necessaria
+        # self.driver.find_element_by_id(
+        #     "id_contents_editor_atto_image_presentation"
+        # ).click()
         self.driver.find_element_by_id(
-            "id_contents_editor_atto_image_presentation"
-        ).click()
-        time.sleep(2)
+            "id_contents_editor_atto_image_altentry"
+        ).send_keys(file.stem)
+        time.sleep(0.5)
 
         # cambiare size?
         # width input field id: id_contents_editor_atto_image_widthentry
+        width = self.driver.find_element_by_id(
+            "id_contents_editor_atto_image_widthentry"
+        )
+        self.clean_input(width, count=5)
+        width.send_keys("1280")
+        time.sleep(0.7)
+
         # height input field id: id_contents_editor_atto_image_heightentry
+        height = self.driver.find_element_by_id(
+            "id_contents_editor_atto_image_heightentry"
+        )
+        self.clean_input(height, count=5)
+        height.send_keys("960")
+        time.sleep(0.7)
 
         # save image
         self.driver.find_element_by_css_selector(".atto_image_urlentrysubmit").click()
@@ -273,9 +295,11 @@ class Module(Element):
                 max_retry = 5
                 for j in range(max_retry):
                     logger.info(f"Retry {j+1}/{max_retry}")
-                    select = self.driver.find_element_by_css_selector(
+
+                    # take last select (last slide)
+                    select = self.driver.find_elements_by_css_selector(
                         ".custom-select.singleselect"
-                    )
+                    )[-1]
                     Select(select).select_by_index(4)
                     time.sleep(1)
 
