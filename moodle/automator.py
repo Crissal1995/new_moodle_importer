@@ -26,6 +26,14 @@ class Automator:
         # enable course edit
         self.enable_edit()
 
+    def __del__(self):
+        try:
+            self.driver.quit()
+        except WebDriverException:
+            pass
+        finally:
+            logger.info("Selenium driver quitted")
+
     def login(self):
         LoginPage(self.driver).complete()
 
