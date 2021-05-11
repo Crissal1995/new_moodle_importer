@@ -5,6 +5,7 @@ import pathlib
 import time
 from typing import Union
 
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver, WebElement
 from selenium.webdriver.support.select import Select
@@ -203,7 +204,7 @@ class Module(Element):
         time.sleep(1)
 
         # browse to desktop
-        self.driver.find_element_by_css_selector(".openimagebrowser").click()
+        self.driver.find_element_by_css_selector("button.openimagebrowser").click()
         time.sleep(1)
 
         # select file upload from left menu
@@ -220,7 +221,16 @@ class Module(Element):
 
         # upload button
         self.driver.find_element_by_css_selector(".fp-upload-btn").click()
-        time.sleep(3)
+        time.sleep(1)
+
+        # if file is already present, overwrite it
+        try:
+            self.driver.find_element_by_css_selector(
+                ".file-picker.fp-dlg > div > button"
+            ).click()
+            time.sleep(1)
+        except WebDriverException:
+            pass
 
         # descrizione non necessaria
         # self.driver.find_element_by_id(
