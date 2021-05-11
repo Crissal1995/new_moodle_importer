@@ -2,6 +2,7 @@ import abc
 import logging
 import os
 import pathlib
+import re
 import time
 from typing import Union
 
@@ -105,6 +106,9 @@ class Module(Element):
     css_selector = "li.activity"
 
     section: Section
+
+    slide_format = r"slide(\d+).png"
+    pattern = re.compile(slide_format, re.I)
 
     def __repr__(self):
         return super().__repr__().replace("Element", "Module")
@@ -261,37 +265,42 @@ class Module(Element):
         # save image
         self.driver.find_element_by_css_selector(".atto_image_urlentrysubmit").click()
 
-    def populate(
-        self,
-        directory: Union[str, os.PathLike],
-        extension: str = ".png",
-        prefix: str = "Slide",
-    ):
+    def get_slide_index(self, slide: pathlib.Path):
+        return int(self.pattern.match(slide.name).group(1))
+
+    def populate(self, directory: Union[str, os.PathLike], start: int = None):
         module_id = self.dom_id.split("-")[1]
         url = config["site"]["module"] + module_id
         self.driver.get(url)
         time.sleep(1)
 
         directory = pathlib.Path(directory)
-        slides = list(
-            sorted(
-                directory.glob(f"*{extension}"),
-                key=lambda el: int(el.stem.replace(prefix, "")),
-            )
-        )
 
-        logger.info(f"Slides are {slides}")
+        get_index = self.get_slide_index
+
+        slides = [
+            slide for slide in directory.iterdir() if self.pattern.match(slide.name)
+        ]
+        slides = sorted(slides, key=get_index)
+
+        if start is not None:
+            slides = [slide for slide in slides if get_index(slide) >= start]
+            assert any(
+                get_index(slide) == start for slide in slides
+            ), "No slide found with this start index!"
+
+        logger.info(f"Found {len(slides)} slides, that are: {slides}")
 
         for i, slide in enumerate(slides):
             name = slide.stem
 
-            logger.info(f"Sto caricando la slide {name}")
+            logger.info(f"Uploading slide no. {i+1}: {name}")
 
-            # prima slides
-            if i == 0:
+            try:
                 s = ".box.py-3.generalbox.firstpageoptions > p:nth-child(4) > a"
                 self.driver.find_element_by_css_selector(s).click()
-            else:
+                logger.debug("Uploaded first module slide")
+            except WebDriverException:
                 # select dropdown options
                 # 0 -> placeholder
                 # 1 -> Aggiungi fine gruppo
@@ -304,20 +313,21 @@ class Module(Element):
 
                 max_retry = 5
                 for j in range(max_retry):
-                    logger.info(f"Retry {j+1}/{max_retry}")
+                    logger.debug(f"Retry {j+1}/{max_retry}")
 
                     # take last select (last slide)
                     select = self.driver.find_elements_by_css_selector(
                         ".custom-select.singleselect"
                     )[-1]
-                    Select(select).select_by_index(4)
-                    time.sleep(1)
+                    select = Select(select)
+                    select.select_by_index(4)
+                    time.sleep(2)
 
                     if self.driver.current_url != current_url:
-                        logger.info("Page changed!")
+                        logger.debug("Page changed!")
                         break
                     else:
-                        logger.info("Page didn't change, retry again...")
+                        logger.debug("Page didn't change, retry again...")
                         self.driver.refresh()
 
                 if self.driver.current_url == current_url:
@@ -354,8 +364,9 @@ class Module(Element):
             # 6 -> Pagina casuale con contenuto
 
             # prima pagina = solo avanti va popolato
-            if i == 0:
-                logger.info("Prima slide = popolo solo 'avanti'")
+            # solo se però non abbiamo settato lo start
+            if i == 0 and start is None:
+                logger.debug("Prima slide = popolo solo 'avanti'")
 
                 self.driver.find_element_by_id(first_input).send_keys("Avanti")
                 time.sleep(1)
@@ -365,7 +376,7 @@ class Module(Element):
                 time.sleep(1)
             # sto nel mezzo
             elif i < len(slides) - 1:
-                logger.info("Slide generica = popolo 'avanti' e 'indietro'")
+                logger.debug("Slide generica = popolo 'avanti' e 'indietro'")
 
                 self.driver.find_element_by_id(first_input).send_keys("Indietro")
                 time.sleep(1)
@@ -382,7 +393,7 @@ class Module(Element):
                 time.sleep(1)
             # sto all'ultima slides
             else:
-                logger.info("Ultima slide = popolo solo 'indietro'")
+                logger.debug("Ultima slide = popolo solo 'indietro'")
 
                 self.driver.find_element_by_id(first_input).send_keys("Indietro")
                 time.sleep(1)
@@ -394,3 +405,5 @@ class Module(Element):
             # and then save slide
             self.driver.find_element_by_id("id_submitbutton").click()
             time.sleep(1)
+
+            logger.info("Slide uploaded")
