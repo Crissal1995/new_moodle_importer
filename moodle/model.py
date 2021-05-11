@@ -109,7 +109,7 @@ class Module(Element):
     def __repr__(self):
         return super().__repr__().replace("Element", "Module")
 
-    def __init__(self, driver: WebDriver, name: str, section: Section):
+    def __init__(self, driver: WebDriver, name: str, section: Section = None):
         super().__init__(driver, name)
         self.section = section
 
