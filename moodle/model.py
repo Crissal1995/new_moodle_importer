@@ -11,6 +11,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver, WebElement
 from selenium.webdriver.support.select import Select
 
+from moodle.cluster import Cluster, ModuleCluster
 from moodle.utility import config
 
 logger = logging.getLogger(__name__)
@@ -268,6 +269,250 @@ class Module(Element):
     def get_slide_index(self, slide: pathlib.Path):
         return int(self.pattern.match(slide.name).group(1))
 
+    def load_slide(self, slide: pathlib.Path, i: int, start: int = None, **kwargs):
+        name = slide.stem
+
+        logger.info(f"Uploading slide no. {i + 1}: {name}")
+
+        try:
+            s = ".box.py-3.generalbox.firstpageoptions > p:nth-child(4) > a"
+            self.driver.find_element_by_css_selector(s).click()
+            logger.debug("Uploaded first module slide")
+        except WebDriverException:
+            # select dropdown options
+            # 0 -> placeholder
+            # 1 -> Aggiungi fine gruppo
+            # 2 -> Aggiungi gruppo
+            # 3 -> Aggiungi fine diramazione
+            # 4 -> Aggiungi pagina con contenuto
+            # 5 -> Aggiungi pagina con domanda
+
+            current_url = self.driver.current_url
+
+            max_retry = 5
+            for j in range(max_retry):
+                logger.debug(f"Retry {j + 1}/{max_retry}")
+
+                # take last select (last slide)
+                select = self.driver.find_elements_by_css_selector(
+                    ".custom-select.singleselect"
+                )[-1]
+                select = Select(select)
+                select.select_by_index(4)
+                time.sleep(2)
+
+                if self.driver.current_url != current_url:
+                    logger.debug("Page changed!")
+                    break
+                else:
+                    logger.debug("Page didn't change, retry again...")
+                    self.driver.refresh()
+
+            if self.driver.current_url == current_url:
+                msg = "Redirect after clicking select option didn't work!"
+                logger.error(msg)
+                raise RuntimeError(msg)
+
+        # sono nella pagina di inserimento Pagina con contenuto
+        self.driver.find_element_by_id("id_title").send_keys(name)
+        time.sleep(1)
+
+        # espandi tutte le sezioni (bottoni)
+        self.driver.find_element_by_css_selector(".collapseexpand").click()
+        time.sleep(1)
+
+        # faccio l'upload della slide
+        self.upload(slide)
+        time.sleep(1)
+
+        # e ora lavoro sui bottoni
+        first_input = "id_answer_editor_0"
+        second_input = "id_answer_editor_1"
+
+        first_select = "id_jumpto_0"
+        second_select = "id_jumpto_1"
+
+        # select options index
+        # 0 -> Questa pagina
+        # 1 -> Pagina successiva
+        # 2 -> Pagina precedente
+        # 3 -> Fine della lezione
+        # 4 -> Domanda non vista in una pagina con contenuto
+        # 5 -> Domanda casuale all'interno di una pagina di contenuto
+        # 6 -> Pagina casuale con contenuto
+
+        # prima pagina = solo avanti va popolato
+        # solo se però non abbiamo settato lo start
+        if i == 0 and start is None:
+            logger.debug("Prima slide = popolo solo 'avanti'")
+
+            self.driver.find_element_by_id(first_input).send_keys("Avanti")
+            time.sleep(1)
+
+            select = self.driver.find_element_by_id(first_select)
+            Select(select).select_by_index(1)
+            time.sleep(1)
+        elif kwargs.get("jump_to_random_content"):
+            logger.debug(
+                "Slide finale del cluster: popolo indietro e casuale con contenuto"
+            )
+
+            self.driver.find_element_by_id(first_input).send_keys("Indietro")
+            time.sleep(1)
+
+            select = self.driver.find_element_by_id(first_select)
+            Select(select).select_by_index(2)
+            time.sleep(1)
+
+            self.driver.find_element_by_id(second_input).send_keys("Avanti")
+            time.sleep(1)
+
+            select = self.driver.find_element_by_id(second_select)
+            Select(select).select_by_index(6)
+            time.sleep(1)
+        else:
+            logger.debug("Slide generica = popolo 'avanti' e 'indietro'")
+
+            prefix = kwargs.get("prefix", "Slide")
+
+            self.driver.find_element_by_id(first_input).send_keys("Indietro")
+            time.sleep(1)
+
+            select = Select(self.driver.find_element_by_id(first_select))
+            if kwargs.get("back_slide"):
+                slide_number = kwargs.get("back_slide")
+                slide = f"{prefix}{slide_number}"
+                select.select_by_visible_text(slide)
+            else:
+                Select(select).select_by_index(2)
+            time.sleep(1)
+
+            self.driver.find_element_by_id(second_input).send_keys("Avanti")
+            time.sleep(1)
+
+            select = self.driver.find_element_by_id(second_select)
+            if kwargs.get("next_slide"):
+                slide_number = kwargs.get("next_slide")
+                slide = f"{prefix}{slide_number}"
+                select.select_by_visible_text(slide)
+            else:
+                Select(select).select_by_index(1)
+            time.sleep(1)
+
+        # and then save slide
+        self.driver.find_element_by_id("id_submitbutton").click()
+        time.sleep(1)
+
+        logger.info("Slide uploaded")
+
+    def load_cluster(self, cluster: Cluster, prefix="Slide"):
+        logger.info("Inside load_cluster func!")
+
+        for question in cluster.questions:
+            # prendi il penultimo select (sulla destra)
+            select = self.driver.find_elements_by_css_selector(
+                ".custom-select.singleselect"
+            )[-2]
+
+            # select add question from dropdown
+            Select(select).select_by_index(5)
+            time.sleep(1)
+
+            # submit
+            self.driver.find_element_by_id("id_submitbutton").click()
+            time.sleep(1)
+
+            # now we have to populate the question
+
+            # first we expand all sections
+            expand_all = self.driver.find_element_by_class_name("collapseexpand")
+            if "collapse-all" not in expand_all.get_attribute("class"):
+                expand_all.click()
+                time.sleep(1)
+
+            # then we submit the title (domanda i)
+            self.driver.find_element_by_id("id_title").send_keys(
+                f"Domanda {question.number}"
+            )
+            time.sleep(1)
+
+            # then the question itself
+            self.driver.find_element_by_id("id_contents_editoreditable").send_keys(
+                question.name
+            )
+            time.sleep(1)
+
+            # then populate the three answers
+            index_wrong = 0
+            for answer in question.answers:
+                if answer.is_correct:
+                    # find div of first answer
+                    div = self.driver.find_elements_by_class_name(
+                        "editor_atto_toolbar"
+                    )[1]
+
+                    # expand group of buttons
+                    div.find_element_by_class_name("atto_collapse_button").click()
+                    time.sleep(1)
+
+                    # click html button
+                    div.find_element_by_class_name("atto_html_button").click()
+                    time.sleep(1)
+
+                    # make textarea html visible
+                    self.driver.execute_script(
+                        "$('#id_answer_editor_0').removeAttr('style').removeAttr('hidden')"
+                    )
+                    time.sleep(1)
+                    self.driver.find_element_by_id("id_answer_editor_0").send_keys(
+                        answer.html
+                    )
+                    time.sleep(1)
+
+                    # to save edits, click again html button
+                    div.find_element_by_class_name("atto_html_button").click()
+                    time.sleep(1)
+
+                    # then jump to right slide
+                    jump_to = cluster.min_slide_after_cluster
+                    value = f"{prefix}{jump_to}"
+                    select = Select(self.driver.find_element_by_id("id_jumpto_0"))
+                    select.select_by_visible_text(value)
+                    time.sleep(1)
+
+                    # then set response
+                    el = self.driver.find_element_by_id("id_response_editor_0editable")
+                    el.send_keys("Risposta Esatta")
+                    time.sleep(1)
+
+                else:
+                    index_wrong += 1
+
+                    # send answer text (plaintext)
+                    text_id = f"id_answer_editor_{index_wrong}editable"
+                    self.driver.find_element_by_id(text_id).send_keys(answer.text)
+                    time.sleep(1)
+
+                    # then jump to right slide
+                    jump_to = question.jump2slide
+                    value = f"{prefix}{jump_to}"
+                    select = Select(
+                        self.driver.find_element_by_id(f"id_jumpto_{index_wrong}")
+                    )
+                    select.select_by_visible_text(value)
+                    time.sleep(1)
+
+                    # then set response
+                    el = self.driver.find_element_by_id(
+                        f"id_response_editor_{index_wrong}editable"
+                    )
+                    el.send_keys("Risposta Errata")
+                    time.sleep(1)
+
+            # then save question
+            self.driver.find_element_by_id("id_submitbutton").click()
+            time.sleep(1)
+
     def populate(self, directory: Union[str, os.PathLike], start: int = None):
         module_id = self.dom_id.split("-")[1]
         url = config["site"]["module"] + module_id
@@ -276,8 +521,25 @@ class Module(Element):
 
         directory = pathlib.Path(directory)
 
+        # take json file
+        json_fp = list(directory.glob("*.json"))
+        assert len(json_fp) > 0, "No json found inside module directory!"
+        assert len(json_fp) == 1, "More than one json found inside module directory!"
+        json_fp = json_fp[0]
+        module_cluster = ModuleCluster(json_fp)
+
+        clusters = [cluster for cluster in module_cluster.clusters]
+        max_slide_in_cluster_list = [
+            cluster.max_slide_in_cluster for cluster in clusters
+        ]
+        min_slide_after_cluster_list = [
+            cluster.min_slide_after_cluster for cluster in clusters
+        ]
+
+        # shadow name
         get_index = self.get_slide_index
 
+        # take slides
         slides = [
             slide for slide in directory.iterdir() if self.pattern.match(slide.name)
         ]
@@ -292,118 +554,21 @@ class Module(Element):
         logger.info(f"Found {len(slides)} slides, that are: {slides}")
 
         for i, slide in enumerate(slides):
-            name = slide.stem
+            slide_number = int(self.pattern.match(slide.name).group(1))
 
-            logger.info(f"Uploading slide no. {i+1}: {name}")
+            max_slide_in_cluster = slide_number in max_slide_in_cluster_list
+            min_slide_after_cluster = slide_number in min_slide_after_cluster_list
 
-            try:
-                s = ".box.py-3.generalbox.firstpageoptions > p:nth-child(4) > a"
-                self.driver.find_element_by_css_selector(s).click()
-                logger.debug("Uploaded first module slide")
-            except WebDriverException:
-                # select dropdown options
-                # 0 -> placeholder
-                # 1 -> Aggiungi fine gruppo
-                # 2 -> Aggiungi gruppo
-                # 3 -> Aggiungi fine diramazione
-                # 4 -> Aggiungi pagina con contenuto
-                # 5 -> Aggiungi pagina con domanda
+            kwargs = dict()
+            if max_slide_in_cluster:
+                kwargs.update(jump_to_random_content=True)
+            if min_slide_after_cluster:
+                kwargs.update(back_slide=slide_number - 1)
 
-                current_url = self.driver.current_url
+            self.load_slide(slide, i, start=start, **kwargs)
 
-                max_retry = 5
-                for j in range(max_retry):
-                    logger.debug(f"Retry {j+1}/{max_retry}")
+            if min_slide_after_cluster:
+                # carica domande fra slide precedente e attuale
+                self.load_cluster(clusters.pop(0))
 
-                    # take last select (last slide)
-                    select = self.driver.find_elements_by_css_selector(
-                        ".custom-select.singleselect"
-                    )[-1]
-                    select = Select(select)
-                    select.select_by_index(4)
-                    time.sleep(2)
-
-                    if self.driver.current_url != current_url:
-                        logger.debug("Page changed!")
-                        break
-                    else:
-                        logger.debug("Page didn't change, retry again...")
-                        self.driver.refresh()
-
-                if self.driver.current_url == current_url:
-                    msg = "Redirect after clicking select option didn't work!"
-                    logger.error(msg)
-                    raise RuntimeError(msg)
-
-            # sono nella pagina di inserimento Pagina con contenuto
-            self.driver.find_element_by_id("id_title").send_keys(name)
-            time.sleep(1)
-
-            # espandi tutte le sezioni (bottoni)
-            self.driver.find_element_by_css_selector(".collapseexpand").click()
-            time.sleep(1)
-
-            # faccio l'upload della slide
-            self.upload(slide)
-            time.sleep(1)
-
-            # e ora lavoro sui bottoni
-            first_input = "id_answer_editor_0"
-            second_input = "id_answer_editor_1"
-
-            first_select = "id_jumpto_0"
-            second_select = "id_jumpto_1"
-
-            # select options index
-            # 0 -> Questa pagina
-            # 1 -> Pagina successiva
-            # 2 -> Pagina precedente
-            # 3 -> Fine della lezione
-            # 4 -> Domanda non vista in una pagina con contenuto
-            # 5 -> Domanda casuale all'interno di una pagina di contenuto
-            # 6 -> Pagina casuale con contenuto
-
-            # prima pagina = solo avanti va popolato
-            # solo se però non abbiamo settato lo start
-            if i == 0 and start is None:
-                logger.debug("Prima slide = popolo solo 'avanti'")
-
-                self.driver.find_element_by_id(first_input).send_keys("Avanti")
-                time.sleep(1)
-
-                select = self.driver.find_element_by_id(first_select)
-                Select(select).select_by_index(1)
-                time.sleep(1)
-            # sto nel mezzo
-            elif i < len(slides) - 1:
-                logger.debug("Slide generica = popolo 'avanti' e 'indietro'")
-
-                self.driver.find_element_by_id(first_input).send_keys("Indietro")
-                time.sleep(1)
-
-                select = self.driver.find_element_by_id(first_select)
-                Select(select).select_by_index(2)
-                time.sleep(1)
-
-                self.driver.find_element_by_id(second_input).send_keys("Avanti")
-                time.sleep(1)
-
-                select = self.driver.find_element_by_id(second_select)
-                Select(select).select_by_index(1)
-                time.sleep(1)
-            # sto all'ultima slides
-            else:
-                logger.debug("Ultima slide = popolo solo 'indietro'")
-
-                self.driver.find_element_by_id(first_input).send_keys("Indietro")
-                time.sleep(1)
-
-                select = self.driver.find_element_by_id(first_select)
-                Select(select).select_by_index(2)
-                time.sleep(1)
-
-            # and then save slide
-            self.driver.find_element_by_id("id_submitbutton").click()
-            time.sleep(1)
-
-            logger.info("Slide uploaded")
+                # TODO aggiungere fine gruppo e back_slide per slide dopo fine gruppo
