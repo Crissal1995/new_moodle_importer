@@ -108,7 +108,7 @@ class Module(Element):
 
     section: Section
 
-    slide_format = r"slide(\d+).png"
+    slide_format = r"diapositiva(\d+).png"
     pattern = re.compile(slide_format, re.I)
 
     def __repr__(self):
@@ -269,6 +269,28 @@ class Module(Element):
     def get_slide_index(self, slide: pathlib.Path):
         return int(self.pattern.match(slide.name).group(1))
 
+    def safe_select_by_index(self, select: Select, select_index: int, max_retry: int = 5):
+        current_url = self.driver.current_url
+
+        for j in range(max_retry):
+            logger.debug(f"Retry {j + 1}/{max_retry}")
+
+            # take last select (last slide)
+            select.select_by_index(select_index)
+            time.sleep(2)
+
+            if self.driver.current_url != current_url:
+                logger.debug("Page changed!")
+                break
+            else:
+                logger.debug("Page didn't change, retry again...")
+                self.driver.refresh()
+
+        if self.driver.current_url == current_url:
+            msg = "Redirect after clicking select option didn't work!"
+            logger.error(msg)
+            raise RuntimeError(msg)
+
     def load_slide(self, slide: pathlib.Path, i: int, start: int = None, **kwargs):
         name = slide.stem
 
@@ -287,31 +309,10 @@ class Module(Element):
             # 4 -> Aggiungi pagina con contenuto
             # 5 -> Aggiungi pagina con domanda
 
-            current_url = self.driver.current_url
-
-            max_retry = 5
-            for j in range(max_retry):
-                logger.debug(f"Retry {j + 1}/{max_retry}")
-
-                # take last select (last slide)
-                select = self.driver.find_elements_by_css_selector(
-                    ".custom-select.singleselect"
-                )[-1]
-                select = Select(select)
-                select.select_by_index(4)
-                time.sleep(2)
-
-                if self.driver.current_url != current_url:
-                    logger.debug("Page changed!")
-                    break
-                else:
-                    logger.debug("Page didn't change, retry again...")
-                    self.driver.refresh()
-
-            if self.driver.current_url == current_url:
-                msg = "Redirect after clicking select option didn't work!"
-                logger.error(msg)
-                raise RuntimeError(msg)
+            select = Select(self.driver.find_elements_by_css_selector(
+                ".custom-select.singleselect"
+            )[-1])
+            self.safe_select_by_index(select, 4)
 
         # sono nella pagina di inserimento Pagina con contenuto
         self.driver.find_element_by_id("id_title").send_keys(name)
@@ -373,7 +374,7 @@ class Module(Element):
         else:
             logger.debug("Slide generica = popolo 'avanti' e 'indietro'")
 
-            prefix = kwargs.get("prefix", "Slide")
+            prefix = kwargs.get("prefix", "Diapositiva")
 
             self.driver.find_element_by_id(first_input).send_keys("Indietro")
             time.sleep(1)
@@ -384,7 +385,7 @@ class Module(Element):
                 slide = f"{prefix}{slide_number}"
                 select.select_by_visible_text(slide)
             else:
-                Select(select).select_by_index(2)
+                select.select_by_index(2)
             time.sleep(1)
 
             self.driver.find_element_by_id(second_input).send_keys("Avanti")
@@ -405,7 +406,7 @@ class Module(Element):
 
         logger.info("Slide uploaded")
 
-    def load_cluster(self, cluster: Cluster, prefix="Slide"):
+    def load_cluster(self, cluster: Cluster, prefix="Diapositiva"):
         logger.info("Inside load_cluster func!")
 
         for question in cluster.questions:
@@ -415,7 +416,7 @@ class Module(Element):
             )[-2]
 
             # select add question from dropdown
-            Select(select).select_by_index(5)
+            self.safe_select_by_index(Select(select), 5)
             time.sleep(1)
 
             # submit
@@ -513,6 +514,12 @@ class Module(Element):
             self.driver.find_element_by_id("id_submitbutton").click()
             time.sleep(1)
 
+    def add_end_group(self):
+        select = self.driver.find_elements_by_css_selector(
+            ".custom-select.singleselect"
+        )[-1]
+        self.safe_select_by_index(Select(select), 1)
+
     def populate(self, directory: Union[str, os.PathLike], start: int = None):
         module_id = self.dom_id.split("-")[1]
         url = config["site"]["module"] + module_id
@@ -558,11 +565,12 @@ class Module(Element):
 
             max_slide_in_cluster = slide_number in max_slide_in_cluster_list
             min_slide_after_cluster = slide_number in min_slide_after_cluster_list
+            is_slide_after_end_group = slide_number-1 in min_slide_after_cluster_list
 
             kwargs = dict()
             if max_slide_in_cluster:
                 kwargs.update(jump_to_random_content=True)
-            if min_slide_after_cluster:
+            if min_slide_after_cluster or is_slide_after_end_group:
                 kwargs.update(back_slide=slide_number - 1)
 
             self.load_slide(slide, i, start=start, **kwargs)
@@ -570,5 +578,6 @@ class Module(Element):
             if min_slide_after_cluster:
                 # carica domande fra slide precedente e attuale
                 self.load_cluster(clusters.pop(0))
-
+                self.add_end_group()
                 # TODO aggiungere fine gruppo e back_slide per slide dopo fine gruppo
+
