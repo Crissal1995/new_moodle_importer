@@ -108,7 +108,7 @@ class Module(Element):
 
     section: Section
 
-    slide_format = r"diapositiva(\d+).png"
+    slide_format = rf"{config['file_parameters']['base_name']}(\d+).png"
     pattern = re.compile(slide_format, re.I)
 
     def __repr__(self):
@@ -274,6 +274,7 @@ class Module(Element):
 
         for j in range(max_retry):
             logger.debug(f"Retry {j + 1}/{max_retry}")
+            time.sleep(2)
 
             # take last select (last slide)
             select.select_by_index(select_index)
@@ -374,7 +375,7 @@ class Module(Element):
         else:
             logger.debug("Slide generica = popolo 'avanti' e 'indietro'")
 
-            prefix = kwargs.get("prefix", "Diapositiva")
+            prefix = kwargs.get("prefix", config["file_parameters"]["base_name_in_course"])
 
             self.driver.find_element_by_id(first_input).send_keys("Indietro")
             time.sleep(1)
@@ -406,8 +407,10 @@ class Module(Element):
 
         logger.info("Slide uploaded")
 
-    def load_cluster(self, cluster: Cluster, prefix="Diapositiva"):
+    def load_cluster(self, cluster: Cluster):
         logger.info("Inside load_cluster func!")
+
+        prefix = config["file_parameters"]["base_name_in_course"]
 
         for question in cluster.questions:
             # prendi il penultimo select (sulla destra)

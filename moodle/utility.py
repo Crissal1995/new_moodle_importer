@@ -73,6 +73,9 @@ def get_config(cfg_fp="moodle.cfg"):
     course = parser.get("moodle:urls", "course")
     module = parser.get("moodle:urls", "module")
 
+    base_name = parser.get("upload:file_parameters", "base_name")
+    base_name_in_course = parser.get("upload:file_parameters", "base_name_in_course")
+
     if any(not field for field in (username, password)):
         msg = "Username or password cannot be empty!"
         logger.error(msg)
@@ -87,6 +90,7 @@ def get_config(cfg_fp="moodle.cfg"):
         "credentials": dict(username=username, password=password),
         "site": dict(login=login, course=course, module=module),
         "selenium": dict(env=env, path=path, url=url, headless=headless),
+        "file_parameters": dict(base_name_in_course=base_name_in_course, base_name=base_name),
     }
 
 
