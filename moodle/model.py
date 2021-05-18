@@ -103,13 +103,30 @@ class Section(Element):
         logger.debug(f"Created section on Moodle course with dom id: {self.dom_id}")
 
 
+class Slide:
+    base_name = config["file_parameters"]["base_name"]
+    pattern = re.compile(r"[^\d]*(\d+)", re.I)
+
+    def __init__(self, path: Union[str, os.PathLike]):
+        self.path = pathlib.Path(path)
+        self.name = self.path.name
+        self.index = self.get_index()
+
+    def __repr__(self):
+        return f"Slide({self.path})"
+
+    def get_index(self):
+        match = self.pattern.match(self.name)
+        if not match:
+            raise ValueError(
+                f"Cannot match {self.name} with pattern '{self.pattern.pattern}'"
+            )
+        return int(match.group(1))
+
+
 class Module(Element):
     css_selector = "li.activity"
-
     section: Section
-
-    slide_format = rf"{config['file_parameters']['base_name']}(\d+).png"
-    pattern = re.compile(slide_format, re.I)
 
     def __repr__(self):
         return super().__repr__().replace("Element", "Module")
@@ -266,10 +283,9 @@ class Module(Element):
         # save image
         self.driver.find_element_by_css_selector(".atto_image_urlentrysubmit").click()
 
-    def get_slide_index(self, slide: pathlib.Path):
-        return int(self.pattern.match(slide.name).group(1))
-
-    def safe_select_by_index(self, select: Select, select_index: int, max_retry: int = 5):
+    def safe_select_by_index(
+        self, select: Select, select_index: int, max_retry: int = 5
+    ):
         current_url = self.driver.current_url
 
         for j in range(max_retry):
@@ -310,9 +326,11 @@ class Module(Element):
             # 4 -> Aggiungi pagina con contenuto
             # 5 -> Aggiungi pagina con domanda
 
-            select = Select(self.driver.find_elements_by_css_selector(
-                ".custom-select.singleselect"
-            )[-1])
+            select = Select(
+                self.driver.find_elements_by_css_selector(
+                    ".custom-select.singleselect"
+                )[-1]
+            )
             self.safe_select_by_index(select, 4)
 
         # sono nella pagina di inserimento Pagina con contenuto
@@ -375,7 +393,9 @@ class Module(Element):
         else:
             logger.debug("Slide generica = popolo 'avanti' e 'indietro'")
 
-            prefix = kwargs.get("prefix", config["file_parameters"]["base_name_in_course"])
+            prefix = kwargs.get(
+                "prefix", config["file_parameters"]["base_name_in_course"]
+            )
 
             self.driver.find_element_by_id(first_input).send_keys("Indietro")
             time.sleep(1)
@@ -407,16 +427,28 @@ class Module(Element):
 
         logger.info("Slide uploaded")
 
-    def load_cluster(self, cluster: Cluster):
+    def load_cluster(self, cluster: Cluster, **kwargs):
         logger.info("Inside load_cluster func!")
 
         prefix = config["file_parameters"]["base_name_in_course"]
 
+        is_last_slide = kwargs.get("is_last_slide", False)
+        if is_last_slide:
+            jump2correct = "Fine gruppo"
+        else:
+            jump_to = cluster.max_slide_in_cluster + 1
+            jump2correct = f"{prefix}{jump_to}"
+
         for question in cluster.questions:
-            # prendi il penultimo select (sulla destra)
+            # when called this function, we can have two scenarios
+            # 1) slide (end), end group, slide (after-end) -> we take -3
+            # 2) slide (end), end group -> we take -2
+            # 2 is possible when is last slide is True
+            index = -2 if is_last_slide else -3
+
             select = self.driver.find_elements_by_css_selector(
                 ".custom-select.singleselect"
-            )[-2]
+            )[index]
 
             # select add question from dropdown
             self.safe_select_by_index(Select(select), 5)
@@ -477,11 +509,9 @@ class Module(Element):
                     div.find_element_by_class_name("atto_html_button").click()
                     time.sleep(1)
 
-                    # then jump to right slide
-                    jump_to = cluster.min_slide_after_cluster
-                    value = f"{prefix}{jump_to}"
+                    # select correct slide to jump
                     select = Select(self.driver.find_element_by_id("id_jumpto_0"))
-                    select.select_by_visible_text(value)
+                    select.select_by_visible_text(jump2correct)
                     time.sleep(1)
 
                     # then set response
@@ -536,51 +566,56 @@ class Module(Element):
         assert len(json_fp) > 0, "No json found inside module directory!"
         assert len(json_fp) == 1, "More than one json found inside module directory!"
         json_fp = json_fp[0]
+
+        # create object of all module clusters
         module_cluster = ModuleCluster(json_fp)
 
+        # take all clusters for module as list
         clusters = [cluster for cluster in module_cluster.clusters]
+
+        # and then take max slide in cluster (BEFORE questions)
         max_slide_in_cluster_list = [
             cluster.max_slide_in_cluster for cluster in clusters
         ]
-        min_slide_after_cluster_list = [
-            cluster.min_slide_after_cluster for cluster in clusters
-        ]
 
-        # shadow name
-        get_index = self.get_slide_index
-
-        # take slides
+        # glob slides from directory
+        # also convert to Slide objects
         slides = [
-            slide for slide in directory.iterdir() if self.pattern.match(slide.name)
+            Slide(slide)
+            for slide in directory.iterdir()
+            if Slide.pattern.match(slide.name)
         ]
-        slides = sorted(slides, key=get_index)
+        # sort them by index
+        slides = sorted(slides, key=lambda slide: slide.index)
 
+        # if start is specified, select subset of slides
         if start is not None:
-            slides = [slide for slide in slides if get_index(slide) >= start]
+            slides = [slide for slide in slides if slide.index >= start]
             assert any(
-                get_index(slide) == start for slide in slides
+                slide.index == start for slide in slides
             ), "No slide found with this start index!"
 
         logger.info(f"Found {len(slides)} slides, that are: {slides}")
 
         for i, slide in enumerate(slides):
-            slide_number = int(self.pattern.match(slide.name).group(1))
-
-            max_slide_in_cluster = slide_number in max_slide_in_cluster_list
-            min_slide_after_cluster = slide_number in min_slide_after_cluster_list
-            is_slide_after_end_group = slide_number-1 in min_slide_after_cluster_list
+            is_last_slide = i == len(slides) - 1
+            max_slide_in_cluster = slide.index in max_slide_in_cluster_list
+            min_slide_after_cluster = slide.index + 1 in max_slide_in_cluster_list
 
             kwargs = dict()
             if max_slide_in_cluster:
                 kwargs.update(jump_to_random_content=True)
-            if min_slide_after_cluster or is_slide_after_end_group:
-                kwargs.update(back_slide=slide_number - 1)
-
-            self.load_slide(slide, i, start=start, **kwargs)
-
             if min_slide_after_cluster:
-                # carica domande fra slide precedente e attuale
-                self.load_cluster(clusters.pop(0))
-                self.add_end_group()
-                # TODO aggiungere fine gruppo e back_slide per slide dopo fine gruppo
+                kwargs.update(back_slide=slide.index - 1)
 
+            self.load_slide(slide.path, i, start=start, **kwargs)
+
+            # se ho l'ultima slides e ancora clusters (uno?) da caricare
+            # oppure se mi trovo esattamente una slide dopo la max slide del cluster passato
+            # allora carico il cluster e aggiungo fine gruppo
+            if (is_last_slide and clusters) or min_slide_after_cluster:
+                # create end group
+                self.add_end_group()
+
+                # carica domande fra slide precedente e attuale
+                self.load_cluster(clusters.pop(0), is_last_slide=is_last_slide)
