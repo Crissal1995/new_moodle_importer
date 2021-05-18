@@ -20,9 +20,8 @@ class Question:
 
 class Cluster:
     def __init__(self, json_dict: dict):
-        self.min_slide_after_cluster: int = json_dict["min_slide_after_cluster"]
         self.min_slide_in_cluster: int = json_dict["min_slide_in_cluster"]
-        self.max_slide_in_cluster: int = self.min_slide_after_cluster - 1
+        self.max_slide_in_cluster: int = json_dict["max_slide_in_cluster"]
         self.questions: Sequence[Question] = [
             Question(obj) for obj in json_dict["questions"]
         ]
