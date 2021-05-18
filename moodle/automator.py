@@ -5,6 +5,7 @@ from selenium.common.exceptions import WebDriverException
 from moodle.model import Module, Section
 from moodle.pages import LoginPage, ToggleEditPage
 from moodle.utility import config, get_driver
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class Automator:
         # execute login on moodle platform
         self.login()
 
+        time.sleep(1)
         # enable course edit
         self.enable_edit()
 
