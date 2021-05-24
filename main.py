@@ -58,6 +58,13 @@ def main(**kwargs):
     )
     parser.add_argument("-v", "--verbose", help="Increase verbosity")
 
+    parser.add_argument(
+        "--load-only-slide",
+        action="store_true",
+        default=False,
+        help="load only slide without questions",
+    )
+
     # parse command line args
     args = parser.parse_args()
 
@@ -75,6 +82,9 @@ def main(**kwargs):
     # create an automator object
     automator = moodle.Automator()
 
+    load_only_slide = args.load_only_slide
+    logger.info(f"Load only slide: {load_only_slide}")
+
     if args.upload_all:
         # return directories inside path
         uf_directories = get_directories(root=args.path)
@@ -90,7 +100,7 @@ def main(**kwargs):
                 # create module
                 module = automator.create_module(mod_dir.name, section=section)
                 # and populate it
-                module.populate(mod_dir)
+                module.populate(mod_dir, load_only_slide=load_only_slide)
     elif args.upload_module:
         # if module is specified, try to get it from page
         if args.module:
@@ -108,7 +118,7 @@ def main(**kwargs):
             module = automator.create_module(path.name, last_section)
             logger.info(f"Module created: {module}")
         start_slide = int(args.start_slide) if args.start_slide else None
-        module.populate(args.path, start=start_slide)
+        module.populate(args.path, start=start_slide, load_only_slide=load_only_slide)
         logger.info("Module populated with slides!")
 
 

@@ -553,7 +553,7 @@ class Module(Element):
         )[-1]
         self.safe_select_by_index(Select(select), 1)
 
-    def populate(self, directory: Union[str, os.PathLike], start: int = None):
+    def populate(self, directory: Union[str, os.PathLike], start: int = None, load_only_slide=False):
         module_id = self.dom_id.split("-")[1]
         url = config["site"]["module"] + module_id
         self.driver.get(url)
@@ -563,20 +563,24 @@ class Module(Element):
 
         # take json file
         json_fp = list(directory.glob("*.json"))
-        assert len(json_fp) > 0, "No json found inside module directory!"
-        assert len(json_fp) == 1, "More than one json found inside module directory!"
-        json_fp = json_fp[0]
+        if not load_only_slide:
+            assert len(json_fp) > 0, "No json found inside module directory!"
+            assert len(json_fp) == 1, "More than one json found inside module directory!"
+            json_fp = json_fp[0]
 
-        # create object of all module clusters
-        module_cluster = ModuleCluster(json_fp)
+            # create object of all module clusters
+            module_cluster = ModuleCluster(json_fp)
 
-        # take all clusters for module as list
-        clusters = [cluster for cluster in module_cluster.clusters]
+            # take all clusters for module as list
+            clusters = [cluster for cluster in module_cluster.clusters]
 
-        # and then take max slide in cluster (BEFORE questions)
-        max_slide_in_cluster_list = [
-            cluster.max_slide_in_cluster for cluster in clusters
-        ]
+            # and then take max slide in cluster (BEFORE questions)
+            max_slide_in_cluster_list = [
+                cluster.max_slide_in_cluster for cluster in clusters
+            ]
+        else:
+            max_slide_in_cluster_list = []
+            clusters = []
 
         # glob slides from directory
         # also convert to Slide objects
