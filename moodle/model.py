@@ -144,22 +144,27 @@ class Module(Element):
         time.sleep(1)
 
         # add content/resource button inside section
-        create_sel = (
-            "div:nth-child(4) > div:nth-child(5) > div:nth-child(1) >"
-            " div:nth-child(1) > span:nth-child(1) > a:nth-child(1) > span:nth-child(2)"
-        )
+        #create_sel = (
+        #    "div:nth-child(4) > div:nth-child(5) > div:nth-child(1) >"
+        #   " div:nth-child(1) > span:nth-child(1) > a:nth-child(1) > span:nth-child(2)"
+        #)
+
+        create_sel = "button"
 
         # find first section, and from it its create resource button
         self.section_element.find_element_by_css_selector(create_sel).click()
         time.sleep(1)
 
         # in the new dialog obtained, select lesson and then submit
-        self.driver.find_element_by_id("item_lesson").click()
-        time.sleep(1)
+        #self.driver.find_element_by_id("item_lesson").click()
+        #time.sleep(1)
 
         # select submit button
-        self.driver.find_element_by_css_selector("input.submitbutton").click()
-        time.sleep(1)
+        #self.driver.find_element_by_css_selector("input.submitbutton").click()
+        #time.sleep(1)
+
+        selector = "div[data-internal='lesson']"
+        self.driver.find_element_by_css_selector(selector).click()
 
         #
         # inside settings page
@@ -334,7 +339,8 @@ class Module(Element):
             self.safe_select_by_index(select, 4)
 
         # sono nella pagina di inserimento Pagina con contenuto
-        self.driver.find_element_by_id("id_title").send_keys(name)
+        name_in_course = name.replace(config['file_parameters']['base_name'], config['file_parameters']['base_name_in_course'])
+        self.driver.find_element_by_id("id_title").send_keys(name_in_course)
         time.sleep(1)
 
         # espandi tutte le sezioni (bottoni)
@@ -587,7 +593,7 @@ class Module(Element):
         slides = [
             Slide(slide)
             for slide in directory.iterdir()
-            if Slide.pattern.match(slide.name)
+            if Slide.pattern.match(slide.name) and "json" not in slide.name
         ]
         # sort them by index
         slides = sorted(slides, key=lambda slide: slide.index)

@@ -26,11 +26,14 @@ class ToggleEditPage(Page):
         self.driver.get(config["site"]["course"])
 
         # click settings icon - gear
-        selector = "action-menu-toggle-2"
-        self.driver.find_element_by_id(selector).click()
+        #selector = "action-menu-toggle-2"
+        #self.driver.find_element_by_id(selector).click()
 
-        selector = "#action-menu-2-menu > div:nth-child(2) > a"
-        self.driver.find_element_by_css_selector(selector).click()
+        #selector = "#action-menu-2-menu > div:nth-child(2) > a"
+        #self.driver.find_element_by_css_selector(selector).click()
+
+        selector = "div.singlebutton > form"
+        self.driver.find_element_by_css_selector(selector).submit()
 
         logger.debug("Toggle editing of course done")
 
