@@ -292,7 +292,7 @@ class Module(Element):
         self,
         select: Select,
         select_index: int,
-        max_retry: int = 5,
+        max_retry: int = 10,
         *,
         raw: str,
         should_redirect: bool = True,
@@ -465,7 +465,7 @@ class Module(Element):
             jump_to = cluster.max_slide_in_cluster + 1
             jump2correct = f"{prefix}{jump_to}"
 
-        for question in cluster.questions:
+        for i, question in enumerate(cluster.questions):
             # when called this function, we can have two scenarios
             # 1) slide (end), end group, slide (after-end) -> we take -3
             # 2) slide (end), end group -> we take -2
@@ -491,6 +491,9 @@ class Module(Element):
             time.sleep(1)
 
             # now we have to populate the question
+            name = f"Domanda {question.number}"
+
+            logger.info(f"Uploading question no. {i+1}: {name}")
 
             # first we expand all sections
             expand_all = self.driver.find_element_by_class_name("collapseexpand")
@@ -499,9 +502,7 @@ class Module(Element):
                 time.sleep(1)
 
             # then we submit the title (domanda i)
-            self.driver.find_element_by_id("id_title").send_keys(
-                f"Domanda {question.number}"
-            )
+            self.driver.find_element_by_id("id_title").send_keys(name)
             time.sleep(1)
 
             # then the question itself
@@ -577,6 +578,7 @@ class Module(Element):
 
             # then save question
             self.driver.find_element_by_id("id_submitbutton").click()
+            logger.info("Question uploaded")
             time.sleep(1)
 
     def add_end_group(self):
