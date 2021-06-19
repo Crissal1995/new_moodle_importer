@@ -289,34 +289,45 @@ class Module(Element):
         self.driver.find_element_by_css_selector(".atto_image_urlentrysubmit").click()
 
     def safe_select_by_index(
-        self, select: Select, select_index: int, max_retry: int = 5, *, raw: str
+        self,
+        select: Select,
+        select_index: int,
+        max_retry: int = 5,
+        *,
+        raw: str,
+        should_redirect: bool = True,
     ):
         current_url = self.driver.current_url
+        time.sleep(1)
 
         for j in range(max_retry):
             logger.debug(f"Retry {j + 1}/{max_retry}")
-            time.sleep(2)
 
             try:
                 # take last select (last slide)
                 select.select_by_index(select_index)
                 time.sleep(1)
             except WebDriverException as e:
-                logger.debug(f"An exception occurred: {e}")
+                logger.warning(f"An exception occurred: {e}")
+                logger.warning("Getting again select element from raw...")
+                self.driver.refresh()
+                time.sleep(1)
                 select = Select(eval(raw))
                 continue
 
-            if self.driver.current_url != current_url:
-                logger.debug("Page changed!")
-                break
+            if should_redirect:
+                if self.driver.current_url != current_url:
+                    logger.debug("Page changed!")
+                    break
+                else:
+                    logger.debug("Page didn't change, retry again...")
+                    self.driver.refresh()
             else:
-                logger.debug("Page didn't change, retry again...")
-                self.driver.refresh()
+                break
 
-        if self.driver.current_url == current_url:
+        if should_redirect and self.driver.current_url == current_url:
             msg = "Redirect after clicking select option didn't work!"
-            logger.error(msg)
-            raise RuntimeError(msg)
+            raise RuntimeError(msg) from None
 
     def load_slide(self, slide: pathlib.Path, i: int, start: int = None, **kwargs):
         name = slide.stem
@@ -575,7 +586,7 @@ class Module(Element):
         raw = """self.driver.find_elements_by_css_selector(
             ".custom-select.singleselect"
         )[-1]""".strip()
-        self.safe_select_by_index(Select(select), 1, raw=raw)
+        self.safe_select_by_index(Select(select), 1, raw=raw, should_redirect=False)
 
     def populate(
         self,
