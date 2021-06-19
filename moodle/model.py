@@ -628,14 +628,22 @@ class Module(Element):
         logger.info(f"Found {len(slides)} slides, that are: {slides}")
 
         for i, slide in enumerate(slides):
+            # ultima slide della lista delle slides da caricare
             is_last_slide = i == len(slides) - 1
+
+            # massima slide nel cluster corrente
             max_slide_in_cluster = slide.index in max_slide_in_cluster_list
-            min_slide_after_cluster = slide.index + 1 in max_slide_in_cluster_list
+
+            # minima slide dopo il cluster e PRIMA del fine gruppo
+            min_slide_after_cluster = slide.index - 1 in max_slide_in_cluster_list
+
+            # minima slide dopo il cluster e DOPO del fine gruppo
+            min_slide_after_end_group = slide.index - 2 in max_slide_in_cluster_list
 
             kwargs = dict()
             if max_slide_in_cluster:
                 kwargs.update(jump_to_random_content=True)
-            if min_slide_after_cluster:
+            if min_slide_after_cluster or min_slide_after_end_group:
                 kwargs.update(back_slide=slide.index - 1)
 
             self.load_slide(slide.path, i, start=start, **kwargs)
