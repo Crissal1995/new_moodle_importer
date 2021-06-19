@@ -29,7 +29,7 @@ class Cluster:
 
 class ModuleCluster:
     def __init__(self, json_fp: Union[str, os.PathLike]):
-        json_dict: dict = json.load(open(json_fp))
+        json_dict: dict = json.load(open(json_fp, encoding="utf-8"))
         self.clusters: Sequence[Cluster] = [
             Cluster(obj) for obj in json_dict["clusters"]
         ]
