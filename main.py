@@ -56,12 +56,13 @@ def main(**kwargs):
     parser.add_argument(
         "--start-slide", type=int, help="Specify the first slide to upload"
     )
-    parser.add_argument("-v", "--verbose", help="Increase verbosity")
+    parser.add_argument(
+        "-v", "--verbose", help="Increase verbosity", action="store_true"
+    )
 
     parser.add_argument(
         "--load-only-slide",
         action="store_true",
-        default=False,
         help="load only slide without questions",
     )
 
