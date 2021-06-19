@@ -90,7 +90,9 @@ def get_config(cfg_fp="moodle.cfg"):
         "credentials": dict(username=username, password=password),
         "site": dict(login=login, course=course, module=module),
         "selenium": dict(env=env, path=path, url=url, headless=headless),
-        "file_parameters": dict(base_name_in_course=base_name_in_course, base_name=base_name),
+        "file_parameters": dict(
+            base_name_in_course=base_name_in_course, base_name=base_name
+        ),
     }
 
 
@@ -121,6 +123,7 @@ def get_driver(**kwargs):
         # cannot enter this branch
         raise AssertionError
 
+    driver.maximize_window()
     return driver
 
 
