@@ -1,6 +1,6 @@
 # Secret
 moodle*.cfg
-data/
+data*/
 
 # Jetbrains
 .idea/
