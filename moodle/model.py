@@ -445,7 +445,10 @@ class Module(Element):
         prefix = config["file_parameters"]["base_name_in_course"]
 
         is_last_slide = kwargs.get("is_last_slide", False)
-        if is_last_slide:
+        slide_index = kwargs["index"]
+        is_last_slide_in_cluster = slide_index <= cluster.max_slide_in_cluster
+
+        if is_last_slide and is_last_slide_in_cluster:
             jump2correct = "Fine gruppo"
         else:
             jump_to = cluster.max_slide_in_cluster + 1
@@ -456,7 +459,9 @@ class Module(Element):
             # 1) slide (end), end group, slide (after-end) -> we take -3
             # 2) slide (end), end group -> we take -2
             # 2 is possible when is last slide is True
-            index = -2 if is_last_slide else -3
+            index = -3
+            if is_last_slide and is_last_slide_in_cluster:
+                index = -2
 
             select = self.driver.find_elements_by_css_selector(
                 ".custom-select.singleselect"
@@ -625,6 +630,16 @@ class Module(Element):
                 slide.index == start for slide in slides
             ), "No slide found with this start index!"
 
+        # filter out "wrong" clusters, the ones already created
+        first_slide = slides[0]
+
+        # take a cluster only if the first slide to upload is behind its max slide
+        clusters = [
+            cluster
+            for cluster in clusters
+            if first_slide.index <= cluster.max_slide_in_cluster
+        ]
+
         logger.info(f"Found {len(slides)} slides, that are: {slides}")
 
         for i, slide in enumerate(slides):
@@ -656,4 +671,6 @@ class Module(Element):
                 self.add_end_group()
 
                 # carica domande fra slide precedente e attuale
-                self.load_cluster(clusters.pop(0), is_last_slide=is_last_slide)
+                self.load_cluster(
+                    clusters.pop(0), is_last_slide=is_last_slide, index=slide.index
+                )
