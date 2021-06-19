@@ -144,10 +144,10 @@ class Module(Element):
         time.sleep(1)
 
         # add content/resource button inside section
-        #create_sel = (
+        # create_sel = (
         #    "div:nth-child(4) > div:nth-child(5) > div:nth-child(1) >"
         #   " div:nth-child(1) > span:nth-child(1) > a:nth-child(1) > span:nth-child(2)"
-        #)
+        # )
 
         create_sel = "button"
 
@@ -156,12 +156,12 @@ class Module(Element):
         time.sleep(1)
 
         # in the new dialog obtained, select lesson and then submit
-        #self.driver.find_element_by_id("item_lesson").click()
-        #time.sleep(1)
+        # self.driver.find_element_by_id("item_lesson").click()
+        # time.sleep(1)
 
         # select submit button
-        #self.driver.find_element_by_css_selector("input.submitbutton").click()
-        #time.sleep(1)
+        # self.driver.find_element_by_css_selector("input.submitbutton").click()
+        # time.sleep(1)
 
         selector = "div[data-internal='lesson']"
         self.driver.find_element_by_css_selector(selector).click()
@@ -289,7 +289,7 @@ class Module(Element):
         self.driver.find_element_by_css_selector(".atto_image_urlentrysubmit").click()
 
     def safe_select_by_index(
-        self, select: Select, select_index: int, max_retry: int = 5
+        self, select: Select, select_index: int, max_retry: int = 5, *, raw: str
     ):
         current_url = self.driver.current_url
 
@@ -297,9 +297,14 @@ class Module(Element):
             logger.debug(f"Retry {j + 1}/{max_retry}")
             time.sleep(2)
 
-            # take last select (last slide)
-            select.select_by_index(select_index)
-            time.sleep(2)
+            try:
+                # take last select (last slide)
+                select.select_by_index(select_index)
+                time.sleep(1)
+            except WebDriverException as e:
+                logger.debug(f"An exception occurred: {e}")
+                select = Select(eval(raw))
+                continue
 
             if self.driver.current_url != current_url:
                 logger.debug("Page changed!")
@@ -331,15 +336,16 @@ class Module(Element):
             # 4 -> Aggiungi pagina con contenuto
             # 5 -> Aggiungi pagina con domanda
 
-            select = Select(
-                self.driver.find_elements_by_css_selector(
-                    ".custom-select.singleselect"
-                )[-1]
-            )
-            self.safe_select_by_index(select, 4)
+            # prendi il penultimo select (l'ultimo è "Vai a ...")
+            select = Select(self.driver.find_elements_by_tag_name("select")[-2])
+            raw = """self.driver.find_elements_by_tag_name("select")[-2]"""
+            self.safe_select_by_index(select, 4, raw=raw)
 
         # sono nella pagina di inserimento Pagina con contenuto
-        name_in_course = name.replace(config['file_parameters']['base_name'], config['file_parameters']['base_name_in_course'])
+        name_in_course = name.replace(
+            config["file_parameters"]["base_name"],
+            config["file_parameters"]["base_name_in_course"],
+        )
         self.driver.find_element_by_id("id_title").send_keys(name_in_course)
         time.sleep(1)
 
@@ -456,8 +462,12 @@ class Module(Element):
                 ".custom-select.singleselect"
             )[index]
 
+            raw = f"""self.driver.find_elements_by_css_selector(
+                ".custom-select.singleselect"
+            )[{index}]""".strip()
+
             # select add question from dropdown
-            self.safe_select_by_index(Select(select), 5)
+            self.safe_select_by_index(Select(select), 5, raw=raw)
             time.sleep(1)
 
             # submit
@@ -557,9 +567,17 @@ class Module(Element):
         select = self.driver.find_elements_by_css_selector(
             ".custom-select.singleselect"
         )[-1]
-        self.safe_select_by_index(Select(select), 1)
+        raw = """self.driver.find_elements_by_css_selector(
+            ".custom-select.singleselect"
+        )[-1]""".strip()
+        self.safe_select_by_index(Select(select), 1, raw=raw)
 
-    def populate(self, directory: Union[str, os.PathLike], start: int = None, load_only_slide=False):
+    def populate(
+        self,
+        directory: Union[str, os.PathLike],
+        start: int = None,
+        load_only_slide=False,
+    ):
         module_id = self.dom_id.split("-")[1]
         url = config["site"]["module"] + module_id
         self.driver.get(url)
@@ -571,7 +589,9 @@ class Module(Element):
         json_fp = list(directory.glob("*.json"))
         if not load_only_slide:
             assert len(json_fp) > 0, "No json found inside module directory!"
-            assert len(json_fp) == 1, "More than one json found inside module directory!"
+            assert (
+                len(json_fp) == 1
+            ), "More than one json found inside module directory!"
             json_fp = json_fp[0]
 
             # create object of all module clusters
