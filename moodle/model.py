@@ -6,7 +6,7 @@ import re
 import time
 from typing import Union
 
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import WebDriverException, NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver, WebElement
 from selenium.webdriver.support.select import Select
@@ -338,7 +338,7 @@ class Module(Element):
             s = ".box.py-3.generalbox.firstpageoptions > p:nth-child(4) > a"
             self.driver.find_element_by_css_selector(s).click()
             logger.debug("Uploaded first module slide")
-        except WebDriverException:
+        except (WebDriverException, NoSuchElementException):
             # select dropdown options
             # 0 -> placeholder
             # 1 -> Aggiungi fine gruppo
@@ -348,7 +348,8 @@ class Module(Element):
             # 5 -> Aggiungi pagina con domanda
 
             # prendi il penultimo select (l'ultimo è "Vai a ...")
-            select = Select(self.driver.find_elements_by_tag_name("select")[-2])
+            select_elems = self.driver.find_elements_by_tag_name("select")
+            select = Select(select_elems[-2] if len(select_elems) > 1 else select_elems[-1])
             raw = """self.driver.find_elements_by_tag_name("select")[-2]"""
             self.safe_select_by_index(select, 4, raw=raw)
 
