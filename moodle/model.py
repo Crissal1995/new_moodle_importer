@@ -78,16 +78,16 @@ class Section(Element):
     def create(self):
         time.sleep(1)
 
-        selector = "a[class=add-sections]"
+        selector = "li:last-child  a.add-sections"
 
         self.driver.find_element_by_css_selector(selector).click()
         time.sleep(1)
         logger.debug("Clicked add-section button")
 
-        selector = "div[class=modal-footer] > button"
-        self.driver.find_element_by_css_selector(selector).click()
-        time.sleep(1)
-        logger.info("Section created")
+        # selector = "div[class=modal-footer] > button"
+        # self.driver.find_element_by_css_selector(selector).click()
+        # time.sleep(1)
+        # logger.info("Section created")
 
         # the section created is the last one, so we'll take it
         li = self.driver.find_elements_by_css_selector(self.css_selector)[-1]
@@ -227,7 +227,7 @@ class Module(Element):
         file = pathlib.Path(file)
 
         # click upload image button
-        self.driver.find_element_by_css_selector(".atto_image_button").click()
+        self.driver.find_element_by_css_selector("button[title='Image']").click()
         time.sleep(1)
 
         # browse to desktop
@@ -236,7 +236,7 @@ class Module(Element):
 
         # select file upload from left menu
         self.driver.find_element_by_css_selector(
-            ".fp-repo-area > div:nth-child(4)"
+            ".fp-repo-area > div:nth-child(5)"
         ).click()
         time.sleep(1)
 
@@ -264,29 +264,29 @@ class Module(Element):
         #     "id_contents_editor_atto_image_presentation"
         # ).click()
         self.driver.find_element_by_id(
-            "id_contents_editor_atto_image_altentry"
+            "id_contents_editor_tiny_image_altentry"
         ).send_keys(file.stem)
         time.sleep(0.5)
 
         # cambiare size?
         # width input field id: id_contents_editor_atto_image_widthentry
         width = self.driver.find_element_by_id(
-            "id_contents_editor_atto_image_widthentry"
+            "id_contents_editor_tiny_image_widthentry"
         )
         self.clean_input(width, count=5)
         width.send_keys("1280")
         time.sleep(0.7)
 
         # height input field id: id_contents_editor_atto_image_heightentry
-        height = self.driver.find_element_by_id(
-            "id_contents_editor_atto_image_heightentry"
-        )
-        self.clean_input(height, count=5)
-        height.send_keys("960")
+        # height = self.driver.find_element_by_id(
+        #     "id_contents_editor_atto_image_heightentry"
+        # )
+        # self.clean_input(height, count=5)
+        # height.send_keys("960")
         time.sleep(0.7)
 
         # save image
-        self.driver.find_element_by_css_selector(".atto_image_urlentrysubmit").click()
+        self.driver.find_element_by_css_selector(".tiny_image_urlentrysubmit").click()
 
     def safe_select_by_index(
         self,
@@ -335,23 +335,24 @@ class Module(Element):
         logger.info(f"Uploading slide no. {i + 1}: {name}")
 
         try:
-            s = ".box.py-3.generalbox.firstpageoptions > p:nth-child(4) > a"
+            s = ".box.py-3.generalbox.firstpageoptions > p:nth-child(3) > a"
             self.driver.find_element_by_css_selector(s).click()
             logger.debug("Uploaded first module slide")
         except (WebDriverException, NoSuchElementException):
             # select dropdown options
-            # 0 -> placeholder
-            # 1 -> Aggiungi fine gruppo
-            # 2 -> Aggiungi gruppo
-            # 3 -> Aggiungi fine diramazione
-            # 4 -> Aggiungi pagina con contenuto
-            # 5 -> Aggiungi pagina con domanda
+            #  -> placeholder
+            #  -> Aggiungi fine gruppo
+            #  -> Aggiungi gruppo
+            #  -> Aggiungi fine diramazione
+            # 20 -> Aggiungi pagina con contenuto
+            #  -> Aggiungi pagina con domanda
 
             # prendi il penultimo select (l'ultimo è "Vai a ...")
             select_elems = self.driver.find_elements_by_tag_name("select")
-            select = Select(select_elems[-2] if len(select_elems) > 1 else select_elems[-1])
-            raw = """self.driver.find_elements_by_tag_name("select")[-2]"""
-            self.safe_select_by_index(select, 4, raw=raw)
+            select = Select(select_elems[-2] if len(select_elems) > 2 else select_elems[-1])
+            # raw = """self.driver.find_elements_by_tag_name("select")[-2]"""
+            # self.safe_select_by_index(select, 2, raw=raw)
+            select.select_by_value("20")
 
         # sono nella pagina di inserimento Pagina con contenuto
         name_in_course = name.replace(

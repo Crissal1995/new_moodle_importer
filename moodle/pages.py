@@ -32,8 +32,8 @@ class ToggleEditPage(Page):
         #selector = "#action-menu-2-menu > div:nth-child(2) > a"
         #self.driver.find_element_by_css_selector(selector).click()
 
-        selector = "div.singlebutton > form"
-        self.driver.find_element_by_css_selector(selector).submit()
+        selector = "input[name='setmode']"
+        self.driver.find_element_by_css_selector(selector).click()
 
         logger.debug("Toggle editing of course done")
 
