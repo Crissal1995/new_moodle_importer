@@ -76,11 +76,11 @@ class Automator:
         section.create()
         return section
 
-    def create_module(self, name: str, section: Section) -> Module:
+    def create_module(self, name: str, section: Section, duration: str = None) -> Module:
         """Create a Module inside a Section and return it"""
         # ensure we're on course page
         self.go_to_course()
 
         module = Module(self.driver, name, section)
-        module.create()
+        module.create(duration=duration)
         return module

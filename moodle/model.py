@@ -140,7 +140,7 @@ class Module(Element):
         """Returns a WebElement from the Section object"""
         return self.driver.find_element_by_id(self.section.dom_id)
 
-    def create(self):
+    def create(self, duration: str = None):
         time.sleep(1)
 
         # add content/resource button inside section
@@ -211,6 +211,15 @@ class Module(Element):
         select.select_by_index(2)
         time.sleep(1)
 
+        # set duration
+        if duration:
+            self.driver.find_element_by_css_selector("div#fgroup_id_completiontimespentgroup label").click()
+            time.sleep(0.5)
+            select = Select(self.driver.find_element_by_id("id_completiontimespent_timeunit"))
+            select.select_by_index(2)
+            time.sleep(0.5)
+            self.driver.find_element_by_id("id_completiontimespent_number").send_keys(duration)
+            time.sleep(1)
         # END
         # submit edits and return to course page
         self.driver.find_element_by_id("id_submitbutton2").click()
@@ -222,7 +231,7 @@ class Module(Element):
         )[-1]
         self.dom_id = module_element.get_attribute("id")
 
-    def upload(self, file: Union[str, os.PathLike]):
+    def upload_slide(self, file: Union[str, os.PathLike]):
         # convert path to pathlib object
         file = pathlib.Path(file)
 
@@ -288,6 +297,29 @@ class Module(Element):
         # save image
         self.driver.find_element_by_css_selector(".tiny_image_urlentrysubmit").click()
 
+    def add_video_by_url(self, video_url):
+        # click upload image button
+        self.driver.find_element_by_css_selector("button[title='Multimedia']").click()
+        time.sleep(1)
+
+        # Aggiungo il video
+        self.driver.find_element_by_css_selector("li[data-medium-type='video']").click()
+        time.sleep(1)
+        self.driver.find_element_by_id("video-video-url-input").send_keys(video_url)
+        time.sleep(1)
+
+        # Imposto la dimensione
+        self.driver.find_element_by_css_selector("a[href='#vdisplayoptions']").click()
+        time.sleep(1)
+        self.driver.find_element_by_id("vdisplayoptions_media-width-entry").send_keys(1280)
+        self.driver.find_element_by_id("vdisplayoptions_media-height-entry").send_keys(720)
+        time.sleep(1)
+
+        # Salvo
+        self.driver.find_element_by_css_selector("div.modal-footer button.btn-primary").click()
+        time.sleep(1)
+
+
     def safe_select_by_index(
         self,
         select: Select,
@@ -329,10 +361,17 @@ class Module(Element):
             msg = "Redirect after clicking select option didn't work!"
             raise RuntimeError(msg) from None
 
-    def load_slide(self, slide: pathlib.Path, i: int, start: int = None, **kwargs):
-        name = slide.stem
+    def add_content_page(self, element_index: int, slide: pathlib.Path = None, start: int = None, video_url: str = None,
+                         **kwargs):
 
-        logger.info(f"Uploading slide no. {i + 1}: {name}")
+        if slide:
+            name = slide.stem
+            logger.info(f"Uploading slide no. {element_index + 1}: {name}")
+        elif video_url:
+            name = f"Video {element_index + 1}"
+            logger.info(f"Add video by url, no. {element_index + 1}")
+        else:
+            raise Exception("Slide or video url is requires.")
 
         try:
             s = ".box.py-3.generalbox.firstpageoptions > p:nth-child(3) > a"
@@ -354,7 +393,7 @@ class Module(Element):
             # self.safe_select_by_index(select, 2, raw=raw)
             select.select_by_value("20")
 
-        # sono nella pagina di inserimento Pagina con contenuto
+        # sono nella pagina d'inserimento Pagina con contenuto
         name_in_course = name.replace(
             config["file_parameters"]["base_name"],
             config["file_parameters"]["base_name_in_course"],
@@ -366,9 +405,12 @@ class Module(Element):
         self.driver.find_element_by_css_selector(".collapseexpand").click()
         time.sleep(1)
 
-        # faccio l'upload della slide
-        self.upload(slide)
-        time.sleep(1)
+        if slide:
+            # faccio l'upload della slide
+            self.upload_slide(slide)
+            time.sleep(1)
+        else:
+            self.add_video_by_url(video_url)
 
         # e ora lavoro sui bottoni
         first_input = "id_answer_editor_0"
@@ -388,7 +430,7 @@ class Module(Element):
 
         # prima pagina = solo avanti va popolato
         # solo se però non abbiamo settato lo start
-        if i == 0 and start is None:
+        if element_index == 0 and start is None and not video_url:
             logger.debug("Prima slide = popolo solo 'avanti'")
 
             self.driver.find_element_by_id(first_input).send_keys("Avanti")
@@ -676,7 +718,7 @@ class Module(Element):
             if min_slide_after_cluster or min_slide_after_end_group:
                 kwargs.update(back_slide=slide.index - 1)
 
-            self.load_slide(slide.path, i, start=start, **kwargs)
+            self.add_content_page(element_index=i, slide=slide.path, start=start, **kwargs)
 
             # se ho l'ultima slides e ancora clusters (uno?) da caricare
             # oppure se mi trovo esattamente una slide dopo la max slide del cluster passato
@@ -689,3 +731,11 @@ class Module(Element):
                 self.load_cluster(
                     clusters.pop(0), is_last_slide=is_last_slide, index=slide.index
                 )
+
+        video_txt_file_path = pathlib.Path.joinpath(directory / 'video.txt')
+        if video_txt_file_path.exists():
+
+            video_urls = open(video_txt_file_path)
+            for i, video_url in enumerate(video_urls):
+                self.add_content_page(element_index=i, video_url=video_url)
+

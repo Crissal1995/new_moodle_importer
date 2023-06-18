@@ -99,7 +99,12 @@ def main(**kwargs):
             for mod_dir in get_directories(uf_dir):
                 logger.info(f"MOD directory: {mod_dir}")
                 # create module
-                module = automator.create_module(mod_dir.name, section=section)
+                duration_file_path = pathlib.Path(mod_dir / "duration.txt")
+                if duration_file_path.exists():
+                    duration = open(duration_file_path).read()
+                else:
+                    duration = None
+                module = automator.create_module(mod_dir.name, section=section, duration=duration)
                 # and populate it
                 module.populate(mod_dir, load_only_slide=load_only_slide)
     elif args.upload_module:
@@ -116,7 +121,12 @@ def main(**kwargs):
             )
             last_section = automator.get_last_section()
             logger.info(f"Last section: {last_section}")
-            module = automator.create_module(path.name, last_section)
+            duration_file_path = pathlib.Path(args.path / "duration.txt")
+            if duration_file_path.exists():
+                duration = open(duration_file_path).read()
+            else:
+                duration = None
+            module = automator.create_module(path.name, last_section, duration=duration)
             logger.info(f"Module created: {module}")
         start_slide = int(args.start_slide) if args.start_slide else None
         module.populate(args.path, start=start_slide, load_only_slide=load_only_slide)
