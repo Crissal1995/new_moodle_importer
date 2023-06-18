@@ -35,7 +35,7 @@ class ToggleEditPage(Page):
 
         selector = "input[name='setmode']"
         self.driver.find_element_by_css_selector(selector).click()
-
+        time.sleep(1)
         logger.debug("Toggle editing of course done")
 
 
@@ -60,6 +60,6 @@ class LoginPage(Page):
         else:
             username_field.send_keys(config["credentials"]["username"])
             password_field.send_keys(config["credentials"]["password"])
-            time.sleep(1)
+            time.sleep(2)
             login_btn.click()
             logger.info("Logged in")
