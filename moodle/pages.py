@@ -1,4 +1,5 @@
 import logging
+import time
 from abc import ABC
 
 from selenium.common import exceptions
@@ -50,6 +51,7 @@ class LoginPage(Page):
         try:
             username_field = self.driver.find_element_by_id("username")
             password_field = self.driver.find_element_by_id("password")
+            login_btn = self.driver.find_element_by_id("loginbtn")
         except exceptions.NoSuchElementException:
             logger.warning("Was already logged in!")
         except exceptions.WebDriverException as e:
@@ -58,5 +60,6 @@ class LoginPage(Page):
         else:
             username_field.send_keys(config["credentials"]["username"])
             password_field.send_keys(config["credentials"]["password"])
-            password_field.send_keys(Keys.ENTER)
+            time.sleep(1)
+            login_btn.click()
             logger.info("Logged in")
