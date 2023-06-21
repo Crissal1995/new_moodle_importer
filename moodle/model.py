@@ -149,7 +149,7 @@ class Module(Element):
         #   " div:nth-child(1) > span:nth-child(1) > a:nth-child(1) > span:nth-child(2)"
         # )
 
-        create_sel = "button"
+        create_sel = ".activity-add-text"
 
         # find first section, and from it its create resource button
         self.section_element.find_element_by_css_selector(create_sel).click()
@@ -408,7 +408,7 @@ class Module(Element):
         if slide:
             # faccio l'upload della slide
             self.upload_slide(slide)
-            time.sleep(1)
+            time.sleep(2)
         else:
             self.add_video_by_url(video_url)
 
@@ -459,7 +459,6 @@ class Module(Element):
             time.sleep(1)
         else:
             logger.debug("Slide generica = popolo 'avanti' e 'indietro'")
-
             prefix = kwargs.get(
                 "prefix", config["file_parameters"]["base_name_in_course"]
             )
@@ -738,4 +737,3 @@ class Module(Element):
             video_urls = open(video_txt_file_path)
             for i, video_url in enumerate(video_urls):
                 self.add_content_page(element_index=i, video_url=video_url)
-

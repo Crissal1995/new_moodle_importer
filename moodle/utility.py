@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 def get_directories(root: Union[str, os.PathLike]):
     root = pathlib.Path(root)
     directories = [elem for elem in root.iterdir() if elem.is_dir()]
+    directories.sort()
 
     if not directories:
         logger.warning(f"No directory found inside {root}")
