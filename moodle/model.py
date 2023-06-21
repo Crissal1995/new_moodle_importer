@@ -388,7 +388,7 @@ class Module(Element):
 
             # prendi il penultimo select (l'ultimo è "Vai a ...")
             select_elems = self.driver.find_elements_by_tag_name("select")
-            select = Select(select_elems[-2] if len(select_elems) > 2 else select_elems[-1])
+            select = Select(select_elems[-1])
             # raw = """self.driver.find_elements_by_tag_name("select")[-2]"""
             # self.safe_select_by_index(select, 2, raw=raw)
             select.select_by_value("20")
