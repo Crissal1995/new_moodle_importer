@@ -99,11 +99,12 @@ def main(**kwargs):
             for mod_dir in get_directories(uf_dir):
                 logger.info(f"MOD directory: {mod_dir}")
                 # create module
-                duration_file_path = pathlib.Path(mod_dir / "duration.txt")
-                if duration_file_path.exists():
-                    duration = open(duration_file_path).read()
-                else:
-                    duration = None
+                # duration_file_path = pathlib.Path(mod_dir / "duration.txt")
+                # if duration_file_path.exists():
+                #     duration = open(duration_file_path).read()
+                # else:
+                #     duration = None
+                duration = "1" # TODO: check
                 module = automator.create_module(mod_dir.name, section=section, duration=duration)
                 # and populate it
                 module.populate(mod_dir, load_only_slide=load_only_slide)
