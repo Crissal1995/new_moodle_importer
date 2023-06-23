@@ -205,6 +205,26 @@ class Module(Element):
         select.select_by_index(1)
         time.sleep(1)
 
+        # completamento per l'accesso
+
+        # aggiungi criterio
+        add_criteria_btn = self.driver.find_element_by_class_name("availability-button").find_element_by_tag_name(
+            "button")
+        add_criteria_btn.click()
+        time.sleep(1)
+
+        # clicca completamento attività
+        activity_completion_btn = self.driver.find_element_by_id("availability_addrestriction_completion")
+        activity_completion_btn.click()
+        time.sleep(1)
+
+        # seleziona completamento attività precedente
+        completion_selection = Select(self.driver \
+                                      .find_element_by_css_selector("span.availability_completion.availability-plugincontrols") \
+                                      .find_element_by_css_selector('select[name="cm"]'))
+        completion_selection.select_by_index(1)
+        time.sleep(1)
+
         # completamento attività
         # -> considera completata in base a condizioni
         select = Select(self.driver.find_element_by_id("id_completion"))
@@ -319,15 +339,14 @@ class Module(Element):
         self.driver.find_element_by_css_selector("div.modal-footer button.btn-primary").click()
         time.sleep(1)
 
-
     def safe_select_by_index(
-        self,
-        select: Select,
-        select_index: int,
-        max_retry: int = 10,
-        *,
-        raw: str,
-        should_redirect: bool = True,
+            self,
+            select: Select,
+            select_index: int,
+            max_retry: int = 10,
+            *,
+            raw: str,
+            should_redirect: bool = True,
     ):
         current_url = self.driver.current_url
         time.sleep(1)
@@ -536,7 +555,7 @@ class Module(Element):
             # now we have to populate the question
             name = f"Domanda {question.number}"
 
-            logger.info(f"Uploading question no. {i+1}: {name}")
+            logger.info(f"Uploading question no. {i + 1}: {name}")
 
             # first we expand all sections
             expand_all = self.driver.find_element_by_class_name("collapseexpand")
@@ -634,10 +653,10 @@ class Module(Element):
         self.safe_select_by_index(Select(select), 1, raw=raw, should_redirect=False)
 
     def populate(
-        self,
-        directory: Union[str, os.PathLike],
-        start: int = None,
-        load_only_slide=False,
+            self,
+            directory: Union[str, os.PathLike],
+            start: int = None,
+            load_only_slide=False,
     ):
         module_id = self.dom_id.split("-")[1]
         url = config["site"]["module"] + module_id
@@ -651,7 +670,7 @@ class Module(Element):
         if not load_only_slide:
             assert len(json_fp) > 0, "No json found inside module directory!"
             assert (
-                len(json_fp) == 1
+                    len(json_fp) == 1
             ), "More than one json found inside module directory!"
             json_fp = json_fp[0]
 
