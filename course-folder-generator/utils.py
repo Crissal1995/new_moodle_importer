@@ -146,6 +146,9 @@ def generate_single_video_url(video_txt_output_file: Union[str, Path], video_cou
             video_course_url_prefix = video_course_url_prefix + "/"
 
         playlist_video_url = video_course_url_prefix + f"{modify_url(video_uri_path)}/{modify_url(video_uri_path)}.m3u8"
+
+        # Fix multiple space in video URI
+        playlist_video_url = re.sub(r"\++", '+', playlist_video_url)
         # playlist_video_url = video_course_url_prefix + f"{replace_spaces(video_uri_path)}.m3u8"
         v.write(playlist_video_url)
         response = requests.head(playlist_video_url)
@@ -194,7 +197,7 @@ def generate_slides(presentation: Union[str, Path], output_folder: Union[str, Pa
     except FileExistsError:
         logger.info("Folder exist remove it")
         os.rmdir(final_output_folder)
-        #shutil.rmtree(final_output_folder)
+        # shutil.rmtree(final_output_folder)
         os.rename(tmp_output_folder, final_output_folder)
     except FileNotFoundError as e:
         logger.error(f"Cannot find: {tmp_output_folder}")
